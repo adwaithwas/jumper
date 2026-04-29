@@ -12,7 +12,8 @@ body {
     background-color: #F4F4F0;
     color: #111111;
     font-family: 'Inter', sans-serif;
-    transition: background-color 1s ease; /* Smooth level transition */
+    transition: background-color 1s ease;
+    /* Smooth level transition */
 }
 
 #game-container {
@@ -21,7 +22,7 @@ body {
     height: 700px;
     overflow: hidden;
     background-color: #F4F4F0;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
     transition: background-color 1s ease;
 }
 
@@ -103,5 +104,5 @@ canvas {
 
 #restart-btn:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
