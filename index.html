@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiss Jump</title>
+    <!-- Importing Inter for that clean, modern Swiss look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <h1 id="score">0</h1>
+            <h2 id="level">LEVEL 1</h2>
+        </div>
+        <canvas id="gameCanvas" width="500" height="700"></canvas>
+        <div id="game-over" class="hidden">
+            <h2>GAME OVER</h2>
+            <p id="final-score">SCORE: 0</p>
+            <button id="restart-btn">RESTART</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
