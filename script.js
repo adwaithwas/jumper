@@ -135,11 +135,34 @@ class Platform {
         this.height = 15;
         this.powerup = null;
 
+        // Moving platform properties (25% chance, only appears after score reaches 1000)
+        this.isMoving = score > 1000 && Math.random() < 0.25;
+        this.vx = this.isMoving ? (Math.random() * 2 + 1) * (Math.random() > 0.5 ? 1 : -1) : 0;
+
         // 15% chance to spawn a super jump powerup on this platform
         if (Math.random() < 0.15) {
             // Position powerup somewhere on the platform
             const px = this.x + Math.random() * (this.width - 30);
             this.powerup = new Powerup(px, this.y);
+        }
+    }
+
+    update() {
+        if (this.isMoving) {
+            this.x += this.vx;
+            // Bounce off edges
+            if (this.x <= 0) {
+                this.x = 0;
+                this.vx *= -1;
+            } else if (this.x + this.width >= canvas.width) {
+                this.x = canvas.width - this.width;
+                this.vx *= -1;
+            }
+
+            // Sync powerup position
+            if (this.powerup) {
+                this.powerup.x += this.vx;
+            }
         }
     }
 
@@ -170,6 +193,8 @@ function initGame() {
     // Initial floor to stand on (no powerup on floor)
     const floor = new Platform(0, canvas.height - 20, canvas.width);
     floor.powerup = null;
+    floor.isMoving = false; // Never move the floor
+    floor.vx = 0;
     platforms.push(floor);
     
     // Generate initial upward platforms
@@ -197,17 +222,21 @@ function checkCollisions() {
     for (let i = 0; i < platforms.length; i++) {
         let p = platforms[i];
         
-        // Platform Collision (Only if falling down)
+        // land on platform (only when falling)
         if (player.vy > 0) {
             if (player.x < p.x + p.width &&
                 player.x + player.width > p.x &&
                 player.y + player.height >= p.y &&
                 player.y + player.height <= p.y + player.vy + 2) { 
                 
-                // Snap player to top of platform
                 player.y = p.y - player.height;
                 player.vy = 0;
                 player.isGrounded = true;
+
+                // Ride the moving platform
+                if (p.isMoving) {
+                    player.x += p.vx;
+                }
             }
         }
 
@@ -310,7 +339,10 @@ function gameLoop(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw platforms and their powerups
-    platforms.forEach(p => p.draw(ctx, palette.plat, palette.player));
+    platforms.forEach(p => {
+        p.update();
+        p.draw(ctx, palette.plat, palette.player);
+    });
 
     // Draw player
     player.draw(ctx, palette.player);
