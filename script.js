@@ -60,6 +60,9 @@ const finalScoreEl = document.getElementById('final-score');
 const highScoreEl = document.getElementById('high-score');
 const finalHighScoreEl = document.getElementById('final-high-score');
 const gameContainer = document.getElementById('game-container');
+const startMenu = document.getElementById('start-menu');
+const startBtn = document.getElementById('start-btn');
+const menuHighScoreEl = document.getElementById('menu-high-score');
 const coinsEl = document.getElementById('coins');
 const finalCoinsEl = document.getElementById('final-coins');
 
@@ -81,6 +84,7 @@ let isMoonDimension = false;
 let moonTimer = 0;
 const MOON_DURATION = 60 * 15; // 15 seconds
 let isGameOver = false;
+let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
 let cameraY = 0;
 
 // Physics & Gameplay Constants
@@ -370,7 +374,35 @@ class Platform {
 let player;
 let platforms = [];
 
+
+function initMenu() {
+    gameState = 'MENU';
+    startMenu.classList.remove('hidden');
+    gameOverScreen.classList.add('hidden');
+    menuHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
+    
+    platforms = [];
+    cameraY = 0;
+    currentLevel = 0;
+    updateUI();
+    
+    // Generate initial platforms for background
+    const floor = new Platform(0, canvas.height - 20, canvas.width);
+    floor.powerup = null;
+    floor.isMoving = false;
+    floor.vx = 0;
+    platforms.push(floor);
+    generatePlatforms(canvas.height - 120);
+    
+    if (!lastTime) {
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
 function initGame() {
+    gameState = 'PLAYING';
+    startMenu.classList.add('hidden');
     player = new Player();
     platforms = [];
     currentLevel = 0;
@@ -522,11 +554,11 @@ function updateCameraAndLevel() {
             gameContainer.classList.remove('moon-style');
             player.vy = -28; // Massive upward boost
         } else {
-            if (!isGameOver) {
+            if (gameState === 'PLAYING') {
                 // Add coin bonus to final score
                 score += (totalCoins * 100);
             }
-            isGameOver = true;
+            gameState = 'GAMEOVER'; isGameOver = true;
         }
     }
 }
@@ -561,7 +593,37 @@ let accumulator = 0;
 const frameDuration = 1000 / 60; // Target 60 FPS for logic
 
 function gameLoop(timestamp) {
-    if (isGameOver) {
+    if (gameState === 'MENU') {
+        let deltaTime = timestamp - lastTime;
+        if (deltaTime > 250) deltaTime = 250;
+        lastTime = timestamp;
+
+        // Auto pan camera upwards
+        cameraY -= 2;
+
+        // Generate platforms infinitely
+        const topPlatform = platforms[platforms.length - 1];
+        if (topPlatform && topPlatform.y > cameraY - canvas.height) {
+            generatePlatforms(topPlatform.y - 100);
+        }
+        
+        // Remove old platforms
+        platforms = platforms.filter(p => p.y < cameraY + canvas.height + 100);
+
+        // Update platforms (for animations/coins)
+        platforms.forEach(p => p.update());
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        
+        const palette = palettes[currentLevel];
+        platforms.forEach(p => p.draw(ctx, palette.plat));
+
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (gameState === 'GAMEOVER') {
         gameOverScreen.classList.remove('hidden');
         if (score > highScore) {
             highScore = score;
@@ -581,7 +643,7 @@ function gameLoop(timestamp) {
     accumulator += deltaTime;
 
     // Moon dimension timer
-    if (isMoonDimension && !isGameOver) {
+    if (isMoonDimension && gameState === 'PLAYING') {
         moonTimer--;
         if (moonTimer <= 0) {
             isMoonDimension = false;
@@ -641,7 +703,7 @@ let secretIndex = 0;
 
 
 function buyJetpack() {
-    if (!isGameOver && totalCoins >= 20 && player.jetpackTimer <= 0) {
+    if (gameState === 'PLAYING' && totalCoins >= 20 && player.jetpackTimer <= 0) {
         totalCoins -= 20;
         coinsEl.innerText = totalCoins;
         player.jetpackTimer = 300; // 5 seconds of jetpack
@@ -654,6 +716,11 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.ArrowLeft = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = true;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        // Start game from menu
+        if (gameState === 'MENU') {
+            initGame();
+            return;
+        }
         // Prevent default spacebar scrolling down
         if (!keys.Space) { // only trigger once per press
             keys.Space = true;
@@ -741,5 +808,8 @@ setupMobileControls();
 
 restartBtn.addEventListener('click', initGame);
 
+// Start Menu Events
+startBtn.addEventListener('click', initGame);
+
 // Start
-initGame();
+initMenu();
