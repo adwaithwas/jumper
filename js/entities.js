@@ -3,7 +3,7 @@ class Player {
         this.width = 30;
         this.height = 30;
         this.x = canvas.width / 2 - this.width / 2;
-        this.y = selectedMode === 'DESCENT' ? 70 : canvas.height - 100;
+        this.y = selectedMode === 'DESCENT' ? (canvas.height / 2) - 30 : canvas.height - 100;
         this.vx = 0;
         this.vy = 0;
         this.isGrounded = false;

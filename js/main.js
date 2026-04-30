@@ -58,7 +58,7 @@ function initGame() {
     // Initial floor to stand on
     let floorWidth = selectedMode === 'DESCENT' ? 150 : canvas.width;
     let floorX = selectedMode === 'DESCENT' ? (canvas.width / 2) - (floorWidth / 2) : 0;
-    let floorY = selectedMode === 'DESCENT' ? 100 : canvas.height - 20;
+    let floorY = selectedMode === 'DESCENT' ? (canvas.height / 2) : canvas.height - 20;
     
     const floor = new Platform(floorX, floorY, floorWidth);
     floor.powerup = null;
@@ -74,7 +74,7 @@ function initGame() {
         if (btnBuy) btnBuy.innerText = '🚀';
     } else if (selectedMode === 'DESCENT') {
         descentSpeed = 2; // Initial auto-scroll speed
-        generatePlatformsDescent(250);
+        generatePlatformsDescent((canvas.height / 2) + 150);
         const shopHint = document.getElementById('shop-hint');
         if (shopHint) shopHint.innerText = '[B] Heavy Fall (20🪙)';
         const btnBuy = document.getElementById('btn-buy');
