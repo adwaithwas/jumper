@@ -56,6 +56,7 @@ function initGame() {
     
     gameOverScreen.classList.add('hidden');
     if (pauseScreen) pauseScreen.classList.add('hidden');
+    isScoreSubmitted = false;
     
     // Initial floor to stand on
     let floorWidth = selectedMode === 'DESCENT' ? 150 : canvas.width;
@@ -161,17 +162,19 @@ function updateCameraAndLevel() {
         const currentAltitude = Math.floor(Math.abs(cameraY));
         if (currentAltitude > maxAltitude) {
             maxAltitude = currentAltitude;
-            score = maxAltitude;
-            
-            const topPlatform = platforms[platforms.length - 1];
-            if (topPlatform.y > cameraY - canvas.height) {
-                generatePlatforms(topPlatform.y - 100);
-            }
-            
-            const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
-            if (newLevel !== currentLevel) {
-                currentLevel = newLevel;
-                updateUI();
+            if (gameState === 'PLAYING') {
+                score = maxAltitude;
+                
+                const topPlatform = platforms[platforms.length - 1];
+                if (topPlatform.y > cameraY - canvas.height) {
+                    generatePlatforms(topPlatform.y - 100);
+                }
+                
+                const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
+                if (newLevel !== currentLevel) {
+                    currentLevel = newLevel;
+                    updateUI();
+                }
             }
         }
         
@@ -202,17 +205,21 @@ function updateCameraAndLevel() {
         const currentDepth = Math.floor(cameraY);
         if (currentDepth > maxAltitude) {
             maxAltitude = currentDepth;
-            score = maxAltitude;
             
-            const bottomPlatform = platforms[platforms.length - 1];
-            if (bottomPlatform && bottomPlatform.y < cameraY + canvas.height * 2) {
-                generatePlatformsDescent(bottomPlatform.y + 100);
-            }
-            
-            const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
-            if (newLevel !== currentLevel) {
-                currentLevel = newLevel;
-                updateUI();
+            // Only update score if game is still active to prevent overwriting coin bonus
+            if (gameState === 'PLAYING') {
+                score = maxAltitude;
+                
+                const bottomPlatform = platforms[platforms.length - 1];
+                if (bottomPlatform && bottomPlatform.y < cameraY + canvas.height * 2) {
+                    generatePlatformsDescent(bottomPlatform.y + 100);
+                }
+                
+                const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
+                if (newLevel !== currentLevel) {
+                    currentLevel = newLevel;
+                    updateUI();
+                }
             }
         }
         
@@ -345,8 +352,9 @@ function gameLoop(timestamp) {
         finalCoinsEl.innerText = totalCoins;
         
         // Submit to Global Leaderboard
-        if (!isCheatsUsed && supabaseClient) {
-            submitScoreToDB();
+        if (!isCheatsUsed && supabaseClient && !isScoreSubmitted) {
+            isScoreSubmitted = true;
+            submitScoreToDB(score, selectedMode);
         }
         return;
     }
@@ -665,6 +673,58 @@ function initUsername() {
             localStorage.setItem('jumperUsername', username);
         });
     }
+
+    // Sync scores in background
+    syncAllScoresWithDB();
+}
+
+async function syncAllScoresWithDB() {
+    if (!supabaseClient || !playerId) return;
+    
+    console.log('[Sync] Checking database for score updates...');
+    const { data, error } = await supabaseClient
+        .from('leaderboard')
+        .select('mode, score')
+        .eq('player_id', playerId);
+        
+    if (error) {
+        console.error('[Sync] Error fetching scores:', error);
+        return;
+    }
+    
+    const remoteScores = {};
+    if (data) {
+        data.forEach(entry => {
+            remoteScores[entry.mode] = entry.score;
+        });
+    }
+    
+    const modes = ['CLASSIC', 'DESCENT'];
+    modes.forEach(mode => {
+        const local = Number(localStorage.getItem(mode === 'CLASSIC' ? 'jumperClassicHighScore' : 'jumperDescentHighScore')) || 0;
+        const remote = remoteScores[mode] || 0;
+        
+        if (local > remote) {
+            console.log(`[Sync] Pushing ${mode} local best (${local}) to DB (Remote was ${remote})`);
+            submitScoreToDB(local, mode);
+        } else if (remote > local) {
+            console.log(`[Sync] Updating ${mode} local best (${local} -> ${remote}) from DB`);
+            if (mode === 'CLASSIC') {
+                classicHighScore = remote;
+                localStorage.setItem('jumperClassicHighScore', remote);
+            } else {
+                descentHighScore = remote;
+                localStorage.setItem('jumperDescentHighScore', remote);
+            }
+            
+            // Update UI if it's the current mode
+            if (selectedMode === mode) {
+                highScore = remote;
+                if (menuHighScoreEl) menuHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
+                if (highScoreEl) highScoreEl.innerText = `HIGH SCORE: ${highScore}`;
+            }
+        }
+    });
 }
 
 function updateLeaderboardUI(mode = leaderboardMode) {
@@ -687,7 +747,7 @@ function updateLeaderboardUI(mode = leaderboardMode) {
     supabaseClient
         .from('leaderboard')
         .select('*')
-        .eq('mode', mode) // Filter by mode!
+        .eq('mode', mode)
         .order('score', { ascending: false })
         .limit(10)
         .then(({ data, error }) => {
@@ -698,37 +758,118 @@ function updateLeaderboardUI(mode = leaderboardMode) {
             }
 
             leaderboardBody.innerHTML = '';
-            data.forEach((entry, index) => {
-                const tr = document.createElement('tr');
-                if (entry.player_id === playerId) tr.className = 'current-player';
-                
-                tr.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${entry.username}</td>
-                    <td>${entry.score.toLocaleString()}</td>
-                `;
-                leaderboardBody.appendChild(tr);
-            });
+            let playerInTop10 = false;
+
+            if (data.length === 0) {
+                leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">NO SCORES YET. BE THE FIRST!</td></tr>';
+            } else {
+                data.forEach((entry, index) => {
+                    const tr = document.createElement('tr');
+                    if (entry.player_id === playerId) {
+                        tr.className = 'current-player';
+                        playerInTop10 = true;
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${entry.username}</td>
+                        <td>${entry.score.toLocaleString()}</td>
+                    `;
+                    leaderboardBody.appendChild(tr);
+                });
+            }
+
+            // Show personal rank in footer if not in top 10
+            const footer = document.getElementById('leaderboard-footer');
+            if (footer) {
+                if (playerInTop10 || !playerId) {
+                    footer.classList.add('hidden');
+                } else {
+                    // Fetch player's best for this mode
+                    supabaseClient
+                        .from('leaderboard')
+                        .select('score')
+                        .eq('player_id', playerId)
+                        .eq('mode', mode)
+                        .maybeSingle()
+                        .then(({ data: myData }) => {
+                            if (myData) {
+                                footer.classList.remove('hidden');
+                                document.getElementById('my-best').innerText = myData.score.toLocaleString();
+                                // We don't have the exact rank easily without a complex query, 
+                                // but showing the score confirms it's in the DB.
+                                document.getElementById('my-rank').innerText = 'MY BEST';
+                            } else {
+                                footer.classList.add('hidden');
+                            }
+                        });
+                }
+            }
         });
 }
 
-async function submitScoreToDB() {
-    // Only submit if it's a new personal high score (or first score)
-    if (!supabaseClient || isCheatsUsed || !playerId || score < highScore) {
+async function submitScoreToDB(finalScore, mode) {
+    const statusEl = document.getElementById('leaderboard-status');
+    if (statusEl) {
+        statusEl.innerText = 'Syncing score...';
+        statusEl.classList.add('pulse');
+        statusEl.style.color = '#fff';
+    }
+
+    // Only submit if it's a valid score and database is connected
+    if (!supabaseClient) {
+        if (statusEl) {
+            statusEl.innerText = 'Database not connected';
+            statusEl.classList.remove('pulse');
+        }
         return;
     }
+    
+    if (isCheatsUsed || !playerId) {
+        if (statusEl) {
+            statusEl.innerText = 'Cheats active or ID missing';
+            statusEl.classList.remove('pulse');
+        }
+        return;
+    }
+
+    // Double check with local high score
+    const currentLocalBest = mode === 'CLASSIC' ? classicHighScore : descentHighScore;
+    
+    // We sync if it's equal or higher than local best (to ensure remote is up to date)
+    if (finalScore < currentLocalBest) {
+        if (statusEl) {
+            statusEl.innerText = ''; // Lower than best, no need to sync
+            statusEl.classList.remove('pulse');
+        }
+        return;
+    }
+
+    console.log(`[Leaderboard] Submitting ${mode} score: ${finalScore} for player: ${username} (${playerId})`);
 
     const { error } = await supabaseClient
         .from('leaderboard')
         .upsert({ 
             player_id: playerId, 
-            username: username, 
-            score: score, 
-            mode: selectedMode,
-            updated_at: new Date()
+            username: username || 'ANONYMOUS', 
+            score: parseInt(finalScore), 
+            mode: mode,
+            updated_at: new Date().toISOString()
         }, { onConflict: 'player_id,mode' });
 
-    if (error) console.error('Error submitting score:', error);
+    if (error) {
+        console.error('[Leaderboard] Error:', error);
+    } else {
+        console.log('[Leaderboard] Success!');
+        
+        // Refresh leaderboard if user is currently looking at it
+        setTimeout(() => {
+            if (leaderboardScreen && !leaderboardScreen.classList.contains('hidden')) {
+                updateLeaderboardUI(mode);
+            }
+        }, 500);
+        return true;
+    }
 }
 
 if (leaderboardBtn) {

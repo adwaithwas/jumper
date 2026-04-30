@@ -19,8 +19,8 @@ const finalCoinsEl = document.getElementById('final-coins');
 
 let currentLevel = 0;
 let score = 0;
-let classicHighScore = localStorage.getItem('jumperClassicHighScore') || 0;
-let descentHighScore = localStorage.getItem('jumperDescentHighScore') || 0;
+let classicHighScore = Number(localStorage.getItem('jumperClassicHighScore')) || 0;
+let descentHighScore = Number(localStorage.getItem('jumperDescentHighScore')) || 0;
 let highScore = 0; // Dynamic based on mode
 let totalCoins = 0;
 let maxAltitude = 0;
@@ -56,3 +56,4 @@ const leaderboardBody = document.getElementById('leaderboard-body');
 const tabClassic = document.getElementById('tab-classic');
 const tabDescent = document.getElementById('tab-descent');
 let leaderboardMode = 'CLASSIC'; // Default view
+let isScoreSubmitted = false; // Flag to prevent multiple submissions per run
