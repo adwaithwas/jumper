@@ -1,3 +1,57 @@
+// 2.5D Rendering Helpers
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1,3),16);
+    let G = parseInt(color.substring(3,5),16);
+    let B = parseInt(color.substring(5,7),16);
+
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+
+    R = (R<255)?R:255;  
+    G = (G<255)?G:255;  
+    B = (B<255)?B:255;  
+    
+    R = (R>0)?R:0;
+    G = (G>0)?G:0;
+    B = (B>0)?B:0;
+
+    let RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+    let GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+    let BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+
+    return "#"+RR+GG+BB;
+}
+
+function draw3DBlock(ctx, x, y, width, height, color) {
+    const depthX = 12;
+    const depthY = 12;
+    
+    // Right face (darker)
+    ctx.fillStyle = shadeColor(color, -20); 
+    ctx.beginPath();
+    ctx.moveTo(x + width, y);
+    ctx.lineTo(x + width + depthX, y - depthY);
+    ctx.lineTo(x + width + depthX, y - depthY + height);
+    ctx.lineTo(x + width, y + height);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Top face (lighter)
+    ctx.fillStyle = shadeColor(color, 20);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + depthX, y - depthY);
+    ctx.lineTo(x + width + depthX, y - depthY);
+    ctx.lineTo(x + width, y);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Front face (Standard)
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, width, height);
+}
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
@@ -98,13 +152,12 @@ class Player {
     }
 
     draw(ctx, color) {
-        ctx.fillStyle = color;
-        // Draw main body
-        ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
-        
-        // Add a small shadow/trail effect for smoothness
-        ctx.fillStyle = color + '66'; // Add transparency hex
+        // Draw 3D shadow/trail (simple 2d offset shadow for effect)
+        ctx.fillStyle = color + '66';
         ctx.fillRect(this.x - this.vx * 1.5, this.y - cameraY - this.vy * 0.5, this.width, this.height);
+        
+        // Draw 3D player body
+        draw3DBlock(ctx, this.x, this.y - cameraY, this.width, this.height, color);
 
         // Draw jetpack flames if active
         if (this.jetpackTimer > 0) {
@@ -226,11 +279,20 @@ class Platform {
     }
 
     draw(ctx, color, playerColor) {
-        ctx.fillStyle = color;
-        ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+        draw3DBlock(ctx, this.x, this.y - cameraY, this.width, this.height, color);
 
         if (this.powerup) {
+            // Give powerup a slight 3D depth position by moving it into the background layer a bit
+            // The depth is 12x12. Let's push the powerup 6px right and 6px up
+            let originalX = this.powerup.x;
+            let originalY = this.powerup.y;
+            this.powerup.x += 6;
+            this.powerup.y -= 6;
+            
             this.powerup.draw(ctx, playerColor); // Powerup uses player color
+            
+            this.powerup.x = originalX;
+            this.powerup.y = originalY;
         }
     }
 }
@@ -425,6 +487,24 @@ function gameLoop(timestamp) {
     
     // Clear canvas so the container's CSS background shows through
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Stationary background grid
+    ctx.strokeStyle = palette.plat + '1A'; // 10% opacity so it's visible on all colors
+    ctx.lineWidth = 1;
+    const gridSpacing = 80; // Wider spacing is smoother on the eyes
+    
+    ctx.beginPath();
+    // Vertical lines stay completely static
+    for(let i = 0; i <= canvas.width; i+= gridSpacing) {
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+    }
+    // Horizontal lines stay completely static
+    for(let i = 0; i <= canvas.height; i+= gridSpacing) {
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+    }
+    ctx.stroke();
 
     // Draw platforms and their powerups
     platforms.forEach(p => {
