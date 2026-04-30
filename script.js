@@ -5,6 +5,8 @@ const levelEl = document.getElementById('level');
 const gameOverScreen = document.getElementById('game-over');
 const restartBtn = document.getElementById('restart-btn');
 const finalScoreEl = document.getElementById('final-score');
+const highScoreEl = document.getElementById('high-score');
+const finalHighScoreEl = document.getElementById('final-high-score');
 const gameContainer = document.getElementById('game-container');
 
 // Swiss Design Palettes: [Background, Platform/Text, Player/Accent]
@@ -18,6 +20,7 @@ const palettes = [
 
 let currentLevel = 0;
 let score = 0;
+let highScore = localStorage.getItem('jumperHighScore') || 0;
 let maxAltitude = 0;
 let isGameOver = false;
 let cameraY = 0;
@@ -26,9 +29,9 @@ let cameraY = 0;
 const GRAVITY = 0.6;
 const JUMP_FORCE = -15;
 const SUPER_JUMP_FORCE = -24; // Powerup jump
-const ACCELERATION = 1.2;
+const ACCELERATION = 1.5;
 const FRICTION = 0.82; // Smoother sliding/stopping
-const MAX_SPEED = 8;
+const MAX_SPEED = 10;
 const LEVEL_UP_SCORE = 1500;
 
 const keys = {
@@ -46,6 +49,7 @@ class Player {
         this.vx = 0;
         this.vy = 0;
         this.isGrounded = false;
+        this.jetpackTimer = 0;
     }
 
     update() {
@@ -64,15 +68,22 @@ class Player {
         if (this.vx > MAX_SPEED) this.vx = MAX_SPEED;
         if (this.vx < -MAX_SPEED) this.vx = -MAX_SPEED;
 
-        // Manual jumping (Mario-style)
-        // Adding a tiny buffer on velocity allows jumping even if slightly sliding down
-        if (keys.Space && (this.isGrounded || this.vy === 0)) {
-            this.vy = JUMP_FORCE;
+        // Jetpack or Gravity
+        if (this.jetpackTimer > 0) {
+            this.jetpackTimer--;
+            this.vy = -12; // Sustained upward thrust
             this.isGrounded = false;
+        } else {
+            // Apply gravity
+            this.vy += GRAVITY;
+            
+            // Manual jumping (Mario-style)
+            // Need to check against GRAVITY instead of 0 because gravity is applied before jumping check now
+            if (keys.Space && (this.isGrounded || this.vy === GRAVITY)) { 
+                this.vy = JUMP_FORCE;
+                this.isGrounded = false;
+            }
         }
-
-        // Apply gravity
-        this.vy += GRAVITY;
 
         // Move
         this.x += this.vx;
@@ -94,6 +105,38 @@ class Player {
         // Add a small shadow/trail effect for smoothness
         ctx.fillStyle = color + '66'; // Add transparency hex
         ctx.fillRect(this.x - this.vx * 1.5, this.y - cameraY - this.vy * 0.5, this.width, this.height);
+
+        // Draw jetpack flames if active
+        if (this.jetpackTimer > 0) {
+            ctx.fillStyle = '#FFA500'; // Orange fire
+            const flameHeight = Math.random() * 15 + 10;
+            // Left nozzle
+            ctx.beginPath();
+            ctx.moveTo(this.x + 5, this.y - cameraY + this.height);
+            ctx.lineTo(this.x + 10, this.y - cameraY + this.height + flameHeight);
+            ctx.lineTo(this.x + 15, this.y - cameraY + this.height);
+            ctx.fill();
+            // Right nozzle
+            ctx.beginPath();
+            ctx.moveTo(this.x + 15, this.y - cameraY + this.height);
+            ctx.lineTo(this.x + 20, this.y - cameraY + this.height + flameHeight);
+            ctx.lineTo(this.x + 25, this.y - cameraY + this.height);
+            ctx.fill();
+
+            // Draw jetpack fuel bar
+            const maxTimer = 300;
+            const barWidth = 40;
+            const barHeight = 4;
+            const barX = this.x + (this.width / 2) - (barWidth / 2);
+            const barY = this.y - cameraY - 15;
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            const fillWidth = (this.jetpackTimer / maxTimer) * barWidth;
+            ctx.fillStyle = '#FFA500'; 
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+        }
     }
 }
 
@@ -105,6 +148,7 @@ class Powerup {
         this.height = 15;
         this.collected = false;
         this.animOffset = Math.random() * Math.PI * 2;
+        this.type = Math.random() < 0.08 ? 'JETPACK' : 'SUPER_JUMP'; // 8% chance for jetpack
     }
 
     draw(ctx, color) {
@@ -113,17 +157,32 @@ class Powerup {
         // Bobbing animation
         const floatY = Math.sin(Date.now() / 150 + this.animOffset) * 5;
 
-        // Powerups will be drawn in the "opposite" color to stand out, 
-        // but we'll stick to the palette's player color for Swiss consistency.
         ctx.fillStyle = color;
         
-        // Draw a small triangle
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y - cameraY + floatY);
-        ctx.lineTo(this.x + this.width, this.y - cameraY + floatY);
-        ctx.lineTo(this.x + this.width / 2, this.y - cameraY - this.height + floatY);
-        ctx.closePath();
-        ctx.fill();
+        if (this.type === 'SUPER_JUMP') {
+            // Draw a small triangle
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - cameraY + floatY);
+            ctx.lineTo(this.x + this.width, this.y - cameraY + floatY);
+            ctx.lineTo(this.x + this.width / 2, this.y - cameraY - this.height + floatY);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // Draw jetpack icon
+            ctx.fillRect(this.x, this.y - cameraY + floatY - this.height, 6, this.height);
+            ctx.fillRect(this.x + 9, this.y - cameraY + floatY - this.height, 6, this.height);
+            ctx.fillStyle = '#FFA500'; // Orange fire detail
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - cameraY + floatY);
+            ctx.lineTo(this.x + 3, this.y - cameraY + floatY + 5);
+            ctx.lineTo(this.x + 6, this.y - cameraY + floatY);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(this.x + 9, this.y - cameraY + floatY);
+            ctx.lineTo(this.x + 12, this.y - cameraY + floatY + 5);
+            ctx.lineTo(this.x + 15, this.y - cameraY + floatY);
+            ctx.fill();
+        }
     }
 }
 
@@ -139,7 +198,7 @@ class Platform {
         this.isMoving = score > 1000 && Math.random() < 0.25;
         this.vx = this.isMoving ? (Math.random() * 2 + 1) * (Math.random() > 0.5 ? 1 : -1) : 0;
 
-        // 15% chance to spawn a super jump powerup on this platform
+        // 15% chance to spawn a powerup on this platform
         if (Math.random() < 0.15) {
             // Position powerup somewhere on the platform
             const px = this.x + Math.random() * (this.width - 30);
@@ -185,6 +244,7 @@ function initGame() {
     currentLevel = 0;
     score = 0;
     maxAltitude = 0;
+    highScoreEl.innerText = `HIGH SCORE: ${highScore}`;
     cameraY = 0;
     isGameOver = false;
     
@@ -201,6 +261,8 @@ function initGame() {
     generatePlatforms(canvas.height - 120);
     
     updateUI();
+    lastTime = performance.now();
+    accumulator = 0;
     requestAnimationFrame(gameLoop);
 }
 
@@ -249,7 +311,11 @@ function checkCollisions() {
                 player.y + player.height > pu.y - pu.height) { // Adjusted for triangle height
                 
                 pu.collected = true;
-                player.vy = SUPER_JUMP_FORCE; // Instant boost!
+                if (pu.type === 'SUPER_JUMP') {
+                    player.vy = SUPER_JUMP_FORCE; // Instant boost!
+                } else if (pu.type === 'JETPACK') {
+                    player.jetpackTimer = 300; // 5 seconds at 60fps
+                }
                 player.isGrounded = false;
             }
         }
@@ -297,6 +363,7 @@ function updateCameraAndLevel() {
 function updateUI() {
     scoreEl.innerText = score;
     levelEl.innerText = `LEVEL ${Math.floor(score / LEVEL_UP_SCORE) + 1}`;
+    if (score > highScore) highScoreEl.innerText = `HIGH SCORE: ${score}`;
     
     // Apply Swiss color transitions
     const palette = palettes[currentLevel];
@@ -319,20 +386,36 @@ function updateUI() {
 }
 
 let lastTime = 0;
+let accumulator = 0;
+const frameDuration = 1000 / 60; // Target 60 FPS for logic
+
 function gameLoop(timestamp) {
     if (isGameOver) {
         gameOverScreen.classList.remove('hidden');
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('jumperHighScore', highScore);
+        }
         finalScoreEl.innerText = `SCORE: ${score}`;
+        finalHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
         return;
     }
 
-    const deltaTime = timestamp - lastTime;
+    let deltaTime = timestamp - lastTime;
+    // Cap deltaTime to avoid spiral of death if tab was inactive
+    if (deltaTime > 250) deltaTime = 250;
     lastTime = timestamp;
 
-    // Game Logic
-    player.update();
-    checkCollisions();
-    updateCameraAndLevel();
+    accumulator += deltaTime;
+
+    // Fixed time step update for logic
+    while (accumulator >= frameDuration) {
+        player.update();
+        platforms.forEach(p => p.update());
+        checkCollisions();
+        updateCameraAndLevel();
+        accumulator -= frameDuration;
+    }
     
     // Smooth UI updates
     scoreEl.innerText = score;
@@ -345,7 +428,6 @@ function gameLoop(timestamp) {
 
     // Draw platforms and their powerups
     platforms.forEach(p => {
-        p.update();
         p.draw(ctx, palette.plat, palette.player);
     });
 

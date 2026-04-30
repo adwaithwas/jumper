@@ -15,6 +15,7 @@
         <div id="ui">
             <h1 id="score">0</h1>
             <h2 id="level">LEVEL 1</h2>
+            <h3 id="high-score">HIGH SCORE: 0</h3>
         </div>
         <canvas id="gameCanvas" width="500" height="700"></canvas>
         
@@ -31,10 +32,17 @@
         <div id="game-over" class="hidden">
             <h2>GAME OVER</h2>
             <p id="final-score">SCORE: 0</p>
+            <p id="final-high-score">HIGH SCORE: 0</p>
             <button id="restart-btn">RESTART</button>
         </div>
     </div>
 
+    <svg width="0" height="0" style="position: absolute;">
+        <filter id="sketchy">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+    </svg>
     <script src="script.js"></script>
 </body>
 
