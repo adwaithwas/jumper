@@ -311,6 +311,11 @@ function updateUI() {
     gameOverScreen.style.color = palette.plat;
     restartBtn.style.backgroundColor = palette.plat;
     restartBtn.style.color = palette.bg;
+
+    // Mobile controls dynamic styling
+    document.documentElement.style.setProperty('--btn-color', palette.plat);
+    document.documentElement.style.setProperty('--btn-bg-active', palette.plat);
+    document.documentElement.style.setProperty('--btn-text-active', palette.bg);
 }
 
 let lastTime = 0;
@@ -374,6 +379,41 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = false;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.Space = false;
 });
+
+// Mobile Touch Controls
+function setupMobileControls() {
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnJump = document.getElementById('btn-jump');
+
+    const addControl = (btn, keyStr) => {
+        if (!btn) return;
+        const press = (e) => {
+            e.preventDefault();
+            if (keyStr === 'Space' && !keys.Space) keys.Space = true;
+            else if (keyStr !== 'Space') keys[keyStr] = true;
+            btn.classList.add('active');
+        };
+        const release = (e) => {
+            e.preventDefault();
+            keys[keyStr] = false;
+            btn.classList.remove('active');
+        };
+        
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+        btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('touchend', release, {passive: false});
+        btn.addEventListener('touchcancel', release, {passive: false});
+    };
+
+    addControl(btnLeft, 'ArrowLeft');
+    addControl(btnRight, 'ArrowRight');
+    addControl(btnJump, 'Space');
+}
+
+setupMobileControls();
 
 restartBtn.addEventListener('click', initGame);
 
