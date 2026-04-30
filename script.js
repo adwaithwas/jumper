@@ -437,6 +437,9 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
+let secretCode = ['KeyD', 'KeyR', 'KeyA', 'KeyW'];
+let secretIndex = 0;
+
 // Input Handling
 window.addEventListener('keydown', (e) => {
     // Only register input if it's the expected keys to prevent interference
@@ -453,6 +456,20 @@ window.addEventListener('keydown', (e) => {
     // Restart on Enter if game is over
     if (e.code === 'Enter' && isGameOver) {
         initGame();
+    }
+
+    // Easter Egg: Type "DRAW"
+    if (e.code === secretCode[secretIndex]) {
+        secretIndex++;
+        if (secretIndex === secretCode.length) {
+            gameContainer.classList.toggle('drawn-style');
+            secretIndex = 0;
+        }
+    } else {
+        secretIndex = 0;
+        if (e.code === secretCode[0]) {
+            secretIndex = 1;
+        }
     }
 });
 
