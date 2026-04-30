@@ -1,0 +1,10 @@
+# Ignore the real config file containing API keys
+js/config.js
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Ignore development scripts
+*.py
