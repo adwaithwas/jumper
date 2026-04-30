@@ -332,7 +332,10 @@ function generatePlatforms(startY) {
     let y = startY;
     // Generate platforms up to a bit beyond the current top of the screen
     while (y > cameraY - canvas.height) {
-        const width = Math.max(60, Math.random() * 100 + 50); 
+        // Platforms start wider (80-160) and gradually get smaller as levels increase (min 55-90)
+        let minWidth = Math.max(55, 80 - (currentLevel * 4));
+        let maxWidth = Math.max(90, 160 - (currentLevel * 6));
+        const width = minWidth + Math.random() * (maxWidth - minWidth);
         const x = Math.random() * (canvas.width - width);
         platforms.push(new Platform(x, y, width));
         
