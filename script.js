@@ -23,9 +23,7 @@ function shadeColor(color, percent) {
     return "#"+RR+GG+BB;
 }
 
-function draw3DBlock(ctx, x, y, width, height, color) {
-    const depthX = 12;
-    const depthY = 12;
+function draw3DBlock(ctx, x, y, width, height, color, depthX = 12, depthY = 12) {
     
     // Right face (darker)
     ctx.fillStyle = shadeColor(color, -20); 
@@ -62,6 +60,8 @@ const finalScoreEl = document.getElementById('final-score');
 const highScoreEl = document.getElementById('high-score');
 const finalHighScoreEl = document.getElementById('final-high-score');
 const gameContainer = document.getElementById('game-container');
+const coinsEl = document.getElementById('coins');
+const finalCoinsEl = document.getElementById('final-coins');
 
 // Swiss Design Palettes: [Background, Platform/Text, Player/Accent]
 const palettes = [
@@ -75,7 +75,11 @@ const palettes = [
 let currentLevel = 0;
 let score = 0;
 let highScore = localStorage.getItem('jumperHighScore') || 0;
+let totalCoins = 0;
 let maxAltitude = 0;
+let isMoonDimension = false;
+let moonTimer = 0;
+const MOON_DURATION = 60 * 15; // 15 seconds
 let isGameOver = false;
 let cameraY = 0;
 
@@ -129,12 +133,14 @@ class Player {
             this.isGrounded = false;
         } else {
             // Apply gravity
-            this.vy += GRAVITY;
+            let currentGravity = isMoonDimension ? 0.15 : GRAVITY;
+            let currentJump = isMoonDimension ? -11 : JUMP_FORCE;
+            
+            this.vy += currentGravity;
             
             // Manual jumping (Mario-style)
-            // Need to check against GRAVITY instead of 0 because gravity is applied before jumping check now
-            if (keys.Space && (this.isGrounded || this.vy === GRAVITY)) { 
-                this.vy = JUMP_FORCE;
+            if (keys.Space && this.isGrounded) { 
+                this.vy = currentJump;
                 this.isGrounded = false;
             }
         }
@@ -193,6 +199,28 @@ class Player {
     }
 }
 
+
+class Coin {
+    constructor(x, y) {
+        this.x = x - 7; // Center it better
+        this.y = y;
+        this.width = 14;
+        this.height = 14;
+        this.collected = false;
+        this.animOffset = Math.random() * Math.PI * 2;
+    }
+
+    draw(ctx) {
+        if (this.collected) return;
+        
+        // Floating animation
+        const floatY = Math.sin(Date.now() / 150 + this.animOffset) * 5;
+
+        // Draw a distinct chunky 3D golden cube
+        draw3DBlock(ctx, this.x, this.y - cameraY + floatY, this.width, this.height, '#FFD700', this.width, this.height);
+    }
+}
+
 class Powerup {
     constructor(x, y) {
         this.x = x + 15; // Center slightly on platform
@@ -201,7 +229,14 @@ class Powerup {
         this.height = 15;
         this.collected = false;
         this.animOffset = Math.random() * Math.PI * 2;
-        this.type = Math.random() < 0.08 ? 'JETPACK' : 'SUPER_JUMP'; // 8% chance for jetpack
+        const rand = Math.random();
+        if (rand < 0.05) {
+            this.type = 'PORTAL'; // 5% chance
+        } else if (rand < 0.15) {
+            this.type = 'JETPACK'; // 10% chance
+        } else {
+            this.type = 'SUPER_JUMP'; // 85% chance
+        }
     }
 
     draw(ctx, color) {
@@ -220,7 +255,7 @@ class Powerup {
             ctx.lineTo(this.x + this.width / 2, this.y - cameraY - this.height + floatY);
             ctx.closePath();
             ctx.fill();
-        } else {
+        } else if (this.type === 'JETPACK') {
             // Draw jetpack icon
             ctx.fillRect(this.x, this.y - cameraY + floatY - this.height, 6, this.height);
             ctx.fillRect(this.x + 9, this.y - cameraY + floatY - this.height, 6, this.height);
@@ -235,6 +270,19 @@ class Powerup {
             ctx.lineTo(this.x + 12, this.y - cameraY + floatY + 5);
             ctx.lineTo(this.x + 15, this.y - cameraY + floatY);
             ctx.fill();
+        } else if (this.type === 'PORTAL') {
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y - cameraY + floatY - this.height/2, this.width, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y - cameraY + floatY - this.height/2, this.width - 4, 0, Math.PI * 2);
+            ctx.stroke();
+            // Draw a tiny star inside
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(this.x + this.width/2 - 1, this.y - cameraY + floatY - this.height/2 - 1, 2, 2);
         }
     }
 }
@@ -257,6 +305,13 @@ class Platform {
             const px = this.x + Math.random() * (this.width - 30);
             this.powerup = new Powerup(px, this.y);
         }
+        
+        this.coin = null;
+        // 35% chance to spawn a coin if there is no powerup
+        if (!this.powerup && Math.random() < 0.35) {
+            const cx = this.x + Math.random() * (this.width - 20) + 10;
+            this.coin = new Coin(cx, this.y - 15);
+        }
     }
 
     update() {
@@ -274,6 +329,9 @@ class Platform {
             // Sync powerup position
             if (this.powerup) {
                 this.powerup.x += this.vx;
+            }
+            if (this.coin) {
+                this.coin.x += this.vx;
             }
         }
     }
@@ -294,6 +352,18 @@ class Platform {
             this.powerup.x = originalX;
             this.powerup.y = originalY;
         }
+
+        if (this.coin) {
+            let originalX = this.coin.x;
+            let originalY = this.coin.y;
+            this.coin.x += 6;
+            this.coin.y -= 6;
+            
+            this.coin.draw(ctx);
+            
+            this.coin.x = originalX;
+            this.coin.y = originalY;
+        }
     }
 }
 
@@ -305,10 +375,15 @@ function initGame() {
     platforms = [];
     currentLevel = 0;
     score = 0;
+    totalCoins = 0;
     maxAltitude = 0;
     highScoreEl.innerText = `HIGH SCORE: ${highScore}`;
+    coinsEl.innerText = totalCoins;
     cameraY = 0;
     isGameOver = false;
+    isMoonDimension = false;
+    moonTimer = 0;
+    gameContainer.classList.remove('moon-style');
     
     gameOverScreen.classList.add('hidden');
     
@@ -367,6 +442,20 @@ function checkCollisions() {
             }
         }
 
+        // Coin Collision
+        if (p.coin && !p.coin.collected) {
+            let c = p.coin;
+            if (player.x < c.x + c.width &&
+                player.x + player.width > c.x &&
+                player.y < c.y + c.height &&
+                player.y + player.height > c.y) {
+                
+                c.collected = true;
+                totalCoins++;
+                coinsEl.innerText = totalCoins;
+            }
+        }
+
         // Powerup Collision (Can happen anytime)
         if (p.powerup && !p.powerup.collected) {
             let pu = p.powerup;
@@ -377,9 +466,14 @@ function checkCollisions() {
                 
                 pu.collected = true;
                 if (pu.type === 'SUPER_JUMP') {
-                    player.vy = SUPER_JUMP_FORCE; // Instant boost!
+                    player.vy = isMoonDimension ? -16 : SUPER_JUMP_FORCE; // Instant boost!
                 } else if (pu.type === 'JETPACK') {
                     player.jetpackTimer = 300; // 5 seconds at 60fps
+                } else if (pu.type === 'PORTAL') {
+                    player.vy = isMoonDimension ? -16 : SUPER_JUMP_FORCE; // boost into portal
+                    isMoonDimension = true;
+                    moonTimer = MOON_DURATION;
+                    gameContainer.classList.add('moon-style');
                 }
                 player.isGrounded = false;
             }
@@ -419,9 +513,21 @@ function updateCameraAndLevel() {
     // Clean up memory: remove platforms off the bottom
     platforms = platforms.filter(p => p.y < cameraY + canvas.height + 100);
     
-    // Game Over if you fall off the bottom of the camera view
+    // Game Over or Moon Bounce if you fall off the bottom of the camera view
     if (player.y > cameraY + canvas.height) {
-        isGameOver = true;
+        if (isMoonDimension) {
+            // Save the player! Spit them back out into normal mode
+            isMoonDimension = false;
+            moonTimer = 0;
+            gameContainer.classList.remove('moon-style');
+            player.vy = -28; // Massive upward boost
+        } else {
+            if (!isGameOver) {
+                // Add coin bonus to final score
+                score += (totalCoins * 100);
+            }
+            isGameOver = true;
+        }
     }
 }
 
@@ -463,6 +569,7 @@ function gameLoop(timestamp) {
         }
         finalScoreEl.innerText = `SCORE: ${score}`;
         finalHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
+        finalCoinsEl.innerText = totalCoins;
         return;
     }
 
@@ -472,6 +579,15 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
 
     accumulator += deltaTime;
+
+    // Moon dimension timer
+    if (isMoonDimension && !isGameOver) {
+        moonTimer--;
+        if (moonTimer <= 0) {
+            isMoonDimension = false;
+            gameContainer.classList.remove('moon-style');
+        }
+    }
 
     // Fixed time step update for logic
     while (accumulator >= frameDuration) {
@@ -523,6 +639,15 @@ function gameLoop(timestamp) {
 let secretCode = ['KeyD', 'KeyR', 'KeyA', 'KeyW'];
 let secretIndex = 0;
 
+
+function buyJetpack() {
+    if (!isGameOver && totalCoins >= 20 && player.jetpackTimer <= 0) {
+        totalCoins -= 20;
+        coinsEl.innerText = totalCoins;
+        player.jetpackTimer = 300; // 5 seconds of jetpack
+    }
+}
+
 // Input Handling
 window.addEventListener('keydown', (e) => {
     // Only register input if it's the expected keys to prevent interference
@@ -539,6 +664,11 @@ window.addEventListener('keydown', (e) => {
     // Restart on Enter if game is over
     if (e.code === 'Enter' && isGameOver) {
         initGame();
+    }
+    
+    // Buy Jetpack on 'B'
+    if (e.code === 'KeyB') {
+        buyJetpack();
     }
 
     // Easter Egg: Type "DRAW"
@@ -593,6 +723,18 @@ function setupMobileControls() {
     addControl(btnLeft, 'ArrowLeft');
     addControl(btnRight, 'ArrowRight');
     addControl(btnJump, 'Space');
+    
+    const btnBuy = document.getElementById('btn-buy');
+    if (btnBuy) {
+        const pressBuy = (e) => { e.preventDefault(); buyJetpack(); btnBuy.classList.add('active'); };
+        const releaseBuy = (e) => { e.preventDefault(); btnBuy.classList.remove('active'); };
+        btnBuy.addEventListener('mousedown', pressBuy);
+        btnBuy.addEventListener('mouseup', releaseBuy);
+        btnBuy.addEventListener('mouseleave', releaseBuy);
+        btnBuy.addEventListener('touchstart', pressBuy, {passive: false});
+        btnBuy.addEventListener('touchend', releaseBuy, {passive: false});
+        btnBuy.addEventListener('touchcancel', releaseBuy, {passive: false});
+    }
 }
 
 setupMobileControls();

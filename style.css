@@ -189,3 +189,19 @@ canvas {
 .drawn-style {
     filter: url(#sketchy) grayscale(80%) sepia(20%) contrast(120%);
 }
+
+.moon-style {
+    /* Inverts colors to make it dark mode, but preserves the original hues so red stays red! */
+    filter: invert(1) hue-rotate(180deg);
+}
+#coin-display {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-top: 5px;
+    color: #FFD700; /* Gold color */
+    letter-spacing: 1px;
+}
+
+#final-coins {
+    color: #FFD700;
+}

@@ -16,6 +16,8 @@
             <h1 id="score">0</h1>
             <h2 id="level">LEVEL 1</h2>
             <h3 id="high-score">HIGH SCORE: 0</h3>
+            <h3 id="coin-display">COINS: <span id="coins">0</span></h3>
+            <p id="shop-hint" style="font-size: 0.8rem; margin: 0; padding-top: 5px; opacity: 0.8; color: inherit;">[B] Jetpack (20)</p>
         </div>
         <canvas id="gameCanvas" width="500" height="700"></canvas>
         
@@ -26,6 +28,7 @@
             </div>
             <div id="right-controls">
                 <button id="btn-jump" class="control-btn">▲</button>
+                <button id="btn-buy" class="control-btn" style="font-size: 1.2rem; margin-top: 10px;">🚀</button>
             </div>
         </div>
 
@@ -33,6 +36,7 @@
             <h2>GAME OVER</h2>
             <p id="final-score">SCORE: 0</p>
             <p id="final-high-score">HIGH SCORE: 0</p>
+            <p id="final-coins-display">COINS: <span id="final-coins">0</span></p>
             <button id="restart-btn">RESTART</button>
         </div>
     </div>
