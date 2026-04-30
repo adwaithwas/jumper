@@ -24,6 +24,8 @@ function initMenu() {
         lastTime = performance.now();
         requestAnimationFrame(gameLoop);
     }
+    
+    initUsername();
 }
 
 function initGame() {
@@ -341,6 +343,11 @@ function gameLoop(timestamp) {
         finalScoreEl.innerText = isCheatsUsed ? `SCORE: ${score} (CHEATS)` : `SCORE: ${score}`;
         finalHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
         finalCoinsEl.innerText = totalCoins;
+        
+        // Submit to Global Leaderboard
+        if (!isCheatsUsed && supabaseClient) {
+            submitScoreToDB();
+        }
         return;
     }
 
@@ -427,6 +434,9 @@ let inputBuffer = '';
 
 // Input Handling
 window.addEventListener('keydown', (e) => {
+    // Don't trigger game actions if the user is typing in an input field
+    if (e.target.tagName === 'INPUT') return;
+
     // Only register input if it's the expected keys to prevent interference
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.ArrowLeft = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = true;
@@ -465,6 +475,7 @@ window.addEventListener('keydown', (e) => {
     }
 
     // Cheat Code Buffer
+    if (e.target.tagName === 'INPUT') return;
     if (e.key && e.key.length === 1) {
         inputBuffer += e.key.toLowerCase();
         if (inputBuffer.length > 20) inputBuffer = inputBuffer.slice(-20);
@@ -476,6 +487,7 @@ window.addEventListener('keydown', (e) => {
     }
 
     // Easter Egg: Type "DRAW"
+    if (e.target.tagName === 'INPUT') return;
     if (e.code === secretCode[secretIndex]) {
         secretIndex++;
         if (secretIndex === secretCode.length) {
@@ -492,6 +504,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+    if (e.target.tagName === 'INPUT') return;
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.ArrowLeft = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = false;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.Space = false;
@@ -625,6 +638,110 @@ levelBtns.forEach(btn => {
 });
 
 startBtn.addEventListener('click', initGame);
+
+// --- Username & Leaderboard Logic ---
+
+function initUsername() {
+    if (!playerId) {
+        playerId = generateUUID();
+        localStorage.setItem('jumperPlayerId', playerId);
+    }
+    if (!username) {
+        const adjs = ['SWIFT', 'NEON', 'BOLD', 'FAST', 'MEGA', 'SUPER', 'ULTRA', 'CRAZY'];
+        const nouns = ['JUMPER', 'RUNNER', 'LEAPER', 'BOUNCER', 'GHOST', 'PILOT', 'CHAMP'];
+        username = adjs[Math.floor(Math.random() * adjs.length)] + '-' + nouns[Math.floor(Math.random() * nouns.length)] + '-' + Math.floor(Math.random() * 99);
+        localStorage.setItem('jumperUsername', username);
+    }
+    if (usernameInput) {
+        usernameInput.value = username;
+        usernameInput.addEventListener('input', (e) => {
+            username = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            usernameInput.value = username;
+            localStorage.setItem('jumperUsername', username);
+        });
+    }
+}
+
+function updateLeaderboardUI(mode = leaderboardMode) {
+    if (!leaderboardBody) return;
+    
+    leaderboardMode = mode;
+    // Update tab UI
+    if (tabClassic && tabDescent) {
+        tabClassic.classList.toggle('active', mode === 'CLASSIC');
+        tabDescent.classList.toggle('active', mode === 'DESCENT');
+    }
+
+    leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">FETCHING ' + mode + ' SCORES...</td></tr>';
+
+    if (!supabaseClient) {
+        leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px; color: #E03C31;">DATABASE NOT CONNECTED</td></tr>';
+        return;
+    }
+
+    supabaseClient
+        .from('leaderboard')
+        .select('*')
+        .eq('mode', mode) // Filter by mode!
+        .order('score', { ascending: false })
+        .limit(10)
+        .then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;">ERROR LOADING SCORES</td></tr>';
+                return;
+            }
+
+            leaderboardBody.innerHTML = '';
+            data.forEach((entry, index) => {
+                const tr = document.createElement('tr');
+                if (entry.player_id === playerId) tr.className = 'current-player';
+                
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${entry.username}</td>
+                    <td>${entry.score.toLocaleString()}</td>
+                `;
+                leaderboardBody.appendChild(tr);
+            });
+        });
+}
+
+async function submitScoreToDB() {
+    if (!supabaseClient || isCheatsUsed) return;
+
+    const { error } = await supabaseClient
+        .from('leaderboard')
+        .upsert({ 
+            player_id: playerId, 
+            username: username, 
+            score: score, 
+            mode: selectedMode,
+            updated_at: new Date()
+        }, { onConflict: 'player_id' });
+
+    if (error) console.error('Error submitting score:', error);
+}
+
+if (leaderboardBtn) {
+    leaderboardBtn.addEventListener('click', () => {
+        updateLeaderboardUI(selectedMode); // Show leaderboard for currently selected game mode
+        leaderboardScreen.classList.remove('hidden');
+    });
+}
+
+if (tabClassic) {
+    tabClassic.addEventListener('click', () => updateLeaderboardUI('CLASSIC'));
+}
+if (tabDescent) {
+    tabDescent.addEventListener('click', () => updateLeaderboardUI('DESCENT'));
+}
+
+if (closeLeaderboardBtn) {
+    closeLeaderboardBtn.addEventListener('click', () => {
+        leaderboardScreen.classList.add('hidden');
+    });
+}
 
 // Start
 initMenu();

@@ -16,3 +16,8 @@ const ACCELERATION = 1.5;
 const FRICTION = 0.82;
 const MAX_SPEED = 10;
 const LEVEL_UP_SCORE = 1500;
+
+// --- Supabase Configuration ---
+const SUPABASE_URL = 'https://xlbwfzmujpiavyzkabau.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsYndmem11anBpYXZ5emthYmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTM3MjIsImV4cCI6MjA5MzEyOTcyMn0.JGwhVtD3xiqGQsFjNcwR7QlT7SMRm7GDX8ISh9dkmCI';
+const supabaseClient = (typeof supabase !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;

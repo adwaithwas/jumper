@@ -44,11 +44,19 @@
                     <button class="level-btn active" data-mode="CLASSIC">Endless Classic</button>
                     <button class="level-btn" data-mode="DESCENT">The Descent</button>
                 </div>
+                <div class="profile-section">
+                    <h4>YOUR RUNNER</h4>
+                    <input type="text" id="username-input" placeholder="NAME" maxlength="15">
+                    <p style="font-size: 0.7rem; margin-top: 5px; opacity: 0.6;">AUTOSAVED TO BROWSER</p>
+                </div>
             </div>
 
             <div class="menu-actions">
                 <button id="start-btn">PLAY</button>
-                <button id="shop-btn" class="placeholder">SHOP (Coming Soon)</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="leaderboard-btn" style="flex: 1; font-size: 1rem; padding: 10px;">RANKINGS</button>
+                    <button id="shop-btn" class="placeholder" style="flex: 1; font-size: 1rem; padding: 10px;">SHOP</button>
+                </div>
             </div>
         </div>
 
@@ -86,6 +94,32 @@
                 <button id="dev-god-btn" class="dev-btn">👻 GOD: OFF</button>
             </div>
         </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="overlay hidden">
+            <h1 class="game-title" style="font-size: 3rem; margin-bottom: 10px;">RANKINGS</h1>
+            
+            <div class="leaderboard-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; width: 90%; max-width: 400px;">
+                <button id="tab-classic" class="tab-btn active" style="flex: 1; font-size: 0.8rem; padding: 10px;">CLASSIC</button>
+                <button id="tab-descent" class="tab-btn" style="flex: 1; font-size: 0.8rem; padding: 10px;">DESCENT</button>
+            </div>
+
+            <div id="leaderboard-container">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>RANK</th>
+                            <th>NAME</th>
+                            <th>SCORE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Mock data will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="close-leaderboard-btn" style="margin-top: 30px; width: 250px;">BACK TO MENU</button>
+        </div>
     </div>
 
     <svg width="0" height="0" style="position: absolute;">
@@ -94,6 +128,8 @@
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
         </filter>
     </svg>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/globals.js"></script>
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>

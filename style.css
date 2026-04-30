@@ -341,3 +341,114 @@ canvas {
     background-color: rgba(244, 244, 240, 0.95);
     z-index: 100;
 }
+
+/* Leaderboard & Profile Styles */
+.profile-section {
+    background: white;
+    padding: 15px;
+    border: 3px solid #111;
+    box-shadow: 4px 4px 0px #111;
+    width: 200px;
+}
+
+#username-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #111;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    outline: none;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+#username-input:focus {
+    background-color: #f0f0f0;
+    border-color: #E03C31;
+}
+
+#leaderboard-container {
+    background: white;
+    border: 3px solid #111;
+    box-shadow: 8px 8px 0px #111;
+    width: 90%;
+    max-width: 400px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+#leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Inter', sans-serif;
+}
+
+#leaderboard-table th {
+    background: #111;
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 900;
+    letter-spacing: 2px;
+    position: sticky;
+    top: 0;
+}
+
+#leaderboard-table td {
+    padding: 12px 15px;
+    border-bottom: 2px solid #eee;
+    font-weight: 700;
+}
+
+#leaderboard-table tr:nth-child(even) {
+    background: #fafafa;
+}
+
+#leaderboard-table tr.current-player {
+    background: #fff0f0;
+    color: #E03C31;
+}
+
+#leaderboard-table tr.current-player td:first-child::before {
+    content: '▶ ';
+}
+
+#close-leaderboard-btn {
+    padding: 15px;
+    font-size: 1.2rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    background: #111;
+    color: white;
+    border: 3px solid #111;
+    box-shadow: 4px 4px 0px #E03C31;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+#close-leaderboard-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #E03C31;
+}
+
+#leaderboard-btn {
+    background: #005BBB !important; /* Blue for rankings */
+    color: white !important;
+}
+
+.tab-btn {
+    background: white;
+    border: 3px solid #111;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: #111;
+    color: white;
+    box-shadow: 4px 4px 0px #E03C31;
+    transform: translate(-2px, -2px);
+}

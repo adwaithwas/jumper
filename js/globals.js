@@ -44,3 +44,15 @@ const keys = {
     ArrowRight: false,
     Space: false
 };
+
+// Username and Leaderboard
+let username = localStorage.getItem('jumperUsername') || '';
+let playerId = localStorage.getItem('jumperPlayerId') || '';
+const usernameInput = document.getElementById('username-input');
+const leaderboardScreen = document.getElementById('leaderboard-screen');
+const leaderboardBtn = document.getElementById('leaderboard-btn');
+const closeLeaderboardBtn = document.getElementById('close-leaderboard-btn');
+const leaderboardBody = document.getElementById('leaderboard-body');
+const tabClassic = document.getElementById('tab-classic');
+const tabDescent = document.getElementById('tab-descent');
+let leaderboardMode = 'CLASSIC'; // Default view
