@@ -646,6 +646,11 @@ function initUsername() {
         playerId = generateUUID();
         localStorage.setItem('jumperPlayerId', playerId);
     }
+    
+    // Debug: Show ID in dev panel
+    const devIdDisp = document.getElementById('dev-id-display');
+    if (devIdDisp) devIdDisp.innerText = `ID: ${playerId}`;
+
     if (!username) {
         const adjs = ['SWIFT', 'NEON', 'BOLD', 'FAST', 'MEGA', 'SUPER', 'ULTRA', 'CRAZY'];
         const nouns = ['JUMPER', 'RUNNER', 'LEAPER', 'BOUNCER', 'GHOST', 'PILOT', 'CHAMP'];
@@ -708,7 +713,10 @@ function updateLeaderboardUI(mode = leaderboardMode) {
 }
 
 async function submitScoreToDB() {
-    if (!supabaseClient || isCheatsUsed) return;
+    // Only submit if it's a new personal high score (or first score)
+    if (!supabaseClient || isCheatsUsed || !playerId || score < highScore) {
+        return;
+    }
 
     const { error } = await supabaseClient
         .from('leaderboard')
@@ -718,7 +726,7 @@ async function submitScoreToDB() {
             score: score, 
             mode: selectedMode,
             updated_at: new Date()
-        }, { onConflict: 'player_id' });
+        }, { onConflict: 'player_id,mode' });
 
     if (error) console.error('Error submitting score:', error);
 }
