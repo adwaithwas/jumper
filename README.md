@@ -79,32 +79,21 @@ The game uses a custom physics engine with:
 
 ---
 
-## 🚀 Getting Started
+## 🕹️ Play Now
 
-### Prerequisites
-A modern web browser (Chrome, Firefox, Safari, Edge).
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/adwaithwas/jumper.git
-   ```
-2. Open `index.html` in your browser.
-3. (Optional) For the leaderboard to work, ensure you have your Supabase keys configured in `js/config.js`.
+**[Click here to play juMper on your browser!](https://adwaithwas.github.io/jumper/)**
 
 ---
 
-## 🛠️ Tech Stack
+
+---
+
+## Tech Stack
 *   **Core**: HTML5 Canvas, JavaScript (ES6+)
 *   **Backend**: Supabase (Database & Real-time)
 *   **Styling**: Vanilla CSS3
-*   **Fonts**: [Inter](https://fonts.google.com/specimen/Inter)
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 *Made with ❤️ by Adwaith*
