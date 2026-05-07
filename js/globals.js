@@ -21,6 +21,7 @@ let currentLevel = 0;
 let score = 0;
 let classicHighScore = Number(localStorage.getItem('jumperClassicHighScore')) || 0;
 let descentHighScore = Number(localStorage.getItem('jumperDescentHighScore')) || 0;
+let gravityShiftHighScore = Number(localStorage.getItem('jumperGravityShiftHighScore')) || 0;
 let highScore = 0; // Dynamic based on mode
 let totalCoins = 0;
 let maxAltitude = 0;
@@ -35,6 +36,7 @@ let gameState = 'MENU';
 let selectedMode = 'CLASSIC';
 let descentSpeed = 2;
 let cameraY = 0;
+let gravityPhase = 'UP'; // Used for Gravity Shift mode
 
 let player;
 let platforms = [];

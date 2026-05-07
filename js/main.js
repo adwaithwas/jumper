@@ -4,7 +4,9 @@ function initMenu() {
     startMenu.classList.remove('hidden');
     gameOverScreen.classList.add('hidden');
     if (pauseScreen) pauseScreen.classList.add('hidden');
-    highScore = selectedMode === 'CLASSIC' ? classicHighScore : descentHighScore;
+    if (selectedMode === 'CLASSIC') highScore = classicHighScore;
+    else if (selectedMode === 'DESCENT') highScore = descentHighScore;
+    else if (selectedMode === 'GRAVITY_SHIFT') highScore = gravityShiftHighScore;
     menuHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
     
     platforms = [];
@@ -43,7 +45,9 @@ function initGame() {
     score = 0;
     totalCoins = 0;
     maxAltitude = 0;
-    highScore = selectedMode === 'CLASSIC' ? classicHighScore : descentHighScore;
+    if (selectedMode === 'CLASSIC') highScore = classicHighScore;
+    else if (selectedMode === 'DESCENT') highScore = descentHighScore;
+    else if (selectedMode === 'GRAVITY_SHIFT') highScore = gravityShiftHighScore;
     highScoreEl.innerText = `HIGH SCORE: ${highScore}`;
     coinsEl.innerText = totalCoins;
     cameraY = 0;
@@ -58,6 +62,11 @@ function initGame() {
     if (pauseScreen) pauseScreen.classList.add('hidden');
     isScoreSubmitted = false;
     
+    // Reset mode variables
+    gameContainer.style.transform = 'none';
+    gravityPhase = 'UP';
+    window.gravityShiftScoreAcc = 0;
+    
     // Initial floor to stand on
     let floorWidth = selectedMode === 'DESCENT' ? 150 : canvas.width;
     let floorX = selectedMode === 'DESCENT' ? (canvas.width / 2) - (floorWidth / 2) : 0;
@@ -69,7 +78,7 @@ function initGame() {
     floor.vx = 0;
     platforms.push(floor);
     
-    if (selectedMode === 'CLASSIC') {
+    if (selectedMode === 'CLASSIC' || selectedMode === 'GRAVITY_SHIFT') {
         generatePlatforms(canvas.height - 120);
         const shopHint = document.getElementById('shop-hint');
         if (shopHint) shopHint.innerText = '[B] Jetpack (20🪙)';
@@ -151,32 +160,71 @@ function checkCollisions() {
     }
 }
 
+function triggerGravityShift() {
+    gravityPhase = gravityPhase === 'UP' ? 'DOWN' : 'UP';
+    
+    const shopHint = document.getElementById('shop-hint');
+    const btnBuy = document.getElementById('btn-buy');
+
+    if (gravityPhase === 'DOWN') {
+        descentSpeed = 2;
+        generatePlatformsDescent(player.y + 100);
+        if (shopHint) shopHint.innerText = '[B] Heavy Fall (20🪙)';
+        if (btnBuy) btnBuy.innerText = '☄️';
+    } else {
+        generatePlatforms(player.y - 100);
+        if (shopHint) shopHint.innerText = '[B] Jetpack (20🪙)';
+        if (btnBuy) btnBuy.innerText = '🚀';
+    }
+    
+    // Flash screen
+    document.body.style.backgroundColor = '#111';
+    setTimeout(() => { document.body.style.backgroundColor = palettes[currentLevel].bg; }, 100);
+}
+
 function updateCameraAndLevel() {
-    if (selectedMode === 'CLASSIC') {
+    let currentStyle = selectedMode;
+    if (selectedMode === 'GRAVITY_SHIFT') {
+        currentStyle = gravityPhase === 'UP' ? 'CLASSIC' : 'DESCENT';
+    }
+
+    if (currentStyle === 'CLASSIC') {
         // Camera follows player smoothly when they go above middle of screen
+        let prevCameraY = cameraY;
         const targetCameraY = player.y - canvas.height / 2;
         if (targetCameraY < cameraY) {
             cameraY += (targetCameraY - cameraY) * 0.15; 
         }
         
         const currentAltitude = Math.floor(Math.abs(cameraY));
-        if (currentAltitude > maxAltitude) {
+        if (currentAltitude > maxAltitude && selectedMode !== 'GRAVITY_SHIFT') {
             maxAltitude = currentAltitude;
             if (gameState === 'PLAYING') {
                 score = maxAltitude;
-                
-                const topPlatform = platforms[platforms.length - 1];
-                if (topPlatform.y > cameraY - canvas.height) {
-                    generatePlatforms(topPlatform.y - 100);
-                }
+            }
+        }
+        
+        if (gameState === 'PLAYING' && selectedMode === 'GRAVITY_SHIFT') {
+            window.gravityShiftScoreAcc += Math.abs(cameraY - prevCameraY);
+            score = Math.floor(window.gravityShiftScoreAcc);
+        }
+        
+        if (gameState === 'PLAYING') {
+            const topPlatform = platforms[platforms.length - 1];
+            if (topPlatform.y > cameraY - canvas.height) {
+                generatePlatforms(topPlatform.y - 100);
+            }
                 
                 const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
                 if (newLevel !== currentLevel) {
                     currentLevel = newLevel;
                     updateUI();
+                    
+                    if (selectedMode === 'GRAVITY_SHIFT') {
+                        triggerGravityShift();
+                    }
                 }
             }
-        }
         
         platforms = platforms.filter(p => p.y < cameraY + canvas.height + 100);
         
@@ -193,35 +241,43 @@ function updateCameraAndLevel() {
                 gameState = 'GAMEOVER'; isGameOver = true;
             }
         }
-    } else if (selectedMode === 'DESCENT') {
+    } else if (currentStyle === 'DESCENT') {
+        let prevCameraY = cameraY;
         // Auto scroll camera downwards
         cameraY += descentSpeed;
         
         // Increase speed slightly as you go deeper
         descentSpeed += 0.0005;
         
-        // No camera catch-up. You must stay inside the box!
-        
         const currentDepth = Math.floor(cameraY);
-        if (currentDepth > maxAltitude) {
+        if (currentDepth > maxAltitude && selectedMode !== 'GRAVITY_SHIFT') {
             maxAltitude = currentDepth;
-            
-            // Only update score if game is still active to prevent overwriting coin bonus
             if (gameState === 'PLAYING') {
                 score = maxAltitude;
-                
-                const bottomPlatform = platforms[platforms.length - 1];
-                if (bottomPlatform && bottomPlatform.y < cameraY + canvas.height * 2) {
-                    generatePlatformsDescent(bottomPlatform.y + 100);
-                }
+            }
+        }
+        
+        if (gameState === 'PLAYING' && selectedMode === 'GRAVITY_SHIFT') {
+            window.gravityShiftScoreAcc += Math.abs(cameraY - prevCameraY);
+            score = Math.floor(window.gravityShiftScoreAcc);
+        }
+        
+        if (gameState === 'PLAYING') {
+            const bottomPlatform = platforms[platforms.length - 1];
+            if (bottomPlatform && bottomPlatform.y < cameraY + canvas.height * 2) {
+                generatePlatformsDescent(bottomPlatform.y + 100);
+            }
                 
                 const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
                 if (newLevel !== currentLevel) {
                     currentLevel = newLevel;
                     updateUI();
+                    
+                    if (selectedMode === 'GRAVITY_SHIFT') {
+                        triggerGravityShift();
+                    }
                 }
             }
-        }
         
         platforms = platforms.filter(p => p.y > cameraY - 200);
         
@@ -342,20 +398,24 @@ function gameLoop(timestamp) {
             if (selectedMode === 'CLASSIC') {
                 classicHighScore = score;
                 localStorage.setItem('jumperClassicHighScore', score);
-            } else {
+            } else if (selectedMode === 'DESCENT') {
                 descentHighScore = score;
                 localStorage.setItem('jumperDescentHighScore', score);
+            } else if (selectedMode === 'GRAVITY_SHIFT') {
+                gravityShiftHighScore = score;
+                localStorage.setItem('jumperGravityShiftHighScore', score);
             }
         }
         finalScoreEl.innerText = isCheatsUsed ? `SCORE: ${score} (CHEATS)` : `SCORE: ${score}`;
         finalHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
         finalCoinsEl.innerText = totalCoins;
         
-        // Submit to Global Leaderboard
-        if (!isCheatsUsed && supabaseClient && !isScoreSubmitted) {
+        // Submit to Global Leaderboard (Only for ranked modes)
+        if (!isCheatsUsed && supabaseClient && !isScoreSubmitted && selectedMode !== 'GRAVITY_SHIFT') {
             isScoreSubmitted = true;
             submitScoreToDB(score, selectedMode);
         }
+        gameContainer.style.transform = 'none'; // reset rotation on game over
         return;
     }
 
@@ -418,11 +478,16 @@ let secretIndex = 0;
 function buyJetpack() {
     if (gameState !== 'PLAYING' || totalCoins < 20) return;
 
-    if (selectedMode === 'CLASSIC' && player.jetpackTimer <= 0) {
+    let currentStyle = selectedMode;
+    if (selectedMode === 'GRAVITY_SHIFT') {
+        currentStyle = gravityPhase === 'UP' ? 'CLASSIC' : 'DESCENT';
+    }
+
+    if (currentStyle === 'CLASSIC' && player.jetpackTimer <= 0) {
         totalCoins -= 20;
         coinsEl.innerText = totalCoins;
         player.jetpackTimer = 300; // 5 seconds of jetpack
-    } else if (selectedMode === 'DESCENT' && player.heavyFallTimer <= 0) {
+    } else if (currentStyle === 'DESCENT' && player.heavyFallTimer <= 0) {
         totalCoins -= 20;
         coinsEl.innerText = totalCoins;
         player.heavyFallTimer = 180; // 3 seconds of heavy fall
@@ -640,7 +705,11 @@ levelBtns.forEach(btn => {
         levelBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedMode = btn.getAttribute('data-mode');
-        highScore = selectedMode === 'CLASSIC' ? classicHighScore : descentHighScore;
+        
+        if (selectedMode === 'CLASSIC') highScore = classicHighScore;
+        else if (selectedMode === 'DESCENT') highScore = descentHighScore;
+        else if (selectedMode === 'GRAVITY_SHIFT') highScore = gravityShiftHighScore;
+        
         menuHighScoreEl.innerText = `HIGH SCORE: ${highScore}`;
     });
 });

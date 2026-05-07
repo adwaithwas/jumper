@@ -9,7 +9,7 @@ A minimalist, high-octane endless platformer built for the web. Experience fluid
 ### 🕹️ Multiple Game Modes
 *   **Endless Classic**: The original experience. Jump higher, avoid the fall, and survive as the speed increases.
 *   **The Descent**: A reverse challenge where you must navigate downwards through treacherous platforms.
-*   **Gravity Shift**: A chaotic unranked mode where the rules of physics are constantly changing.
+*   **Gravity Shift**: A chaotic unranked mode where gameplay dynamically shifts between Classic (climbing) and Descent (falling) every time you reach a new level (1500 points).
 
 ### 🏆 Global Leaderboards
 Powered by **Supabase**, juMper features a real-time global ranking system. 
