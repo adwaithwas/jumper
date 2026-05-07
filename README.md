@@ -1,6 +1,6 @@
 # juMper 🚀
 
-![juMper Preview](jumper_game_preview_1777706786550.png)
+![juMper Preview](assests/screenshots/white_level.png)
 
 A minimalist, high-octane endless platformer built for the web. Experience fluid movement, dynamic level progression, and compete on a global scale.
 
