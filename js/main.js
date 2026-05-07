@@ -215,7 +215,7 @@ function updateCameraAndLevel() {
                 generatePlatforms(topPlatform.y - 100);
             }
                 
-                const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
+                const newLevel = Math.floor(score / LEVEL_UP_SCORE) % palettes.length;
                 if (newLevel !== currentLevel) {
                     currentLevel = newLevel;
                     updateUI();
@@ -268,7 +268,7 @@ function updateCameraAndLevel() {
                 generatePlatformsDescent(bottomPlatform.y + 100);
             }
                 
-                const newLevel = Math.min(Math.floor(score / LEVEL_UP_SCORE), palettes.length - 1);
+                const newLevel = Math.floor(score / LEVEL_UP_SCORE) % palettes.length;
                 if (newLevel !== currentLevel) {
                     currentLevel = newLevel;
                     updateUI();
