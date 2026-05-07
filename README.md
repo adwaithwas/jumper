@@ -1,6 +1,12 @@
 # juMper 🚀
 
-![juMper Preview](assests/screenshots/white_level.png)
+<table>
+  <tr>
+    <td><img src="assests/screenshots/game_menu.png" height="450" alt="Main Menu" /></td>
+    <td><img src="assests/screenshots/white_level.png" height="450" alt="White Level Gameplay" /></td>
+    <td><img src="assests/screenshots/pink_level.png" height="450" alt="Pink Level Gameplay" /></td>
+  </tr>
+</table>
 
 A minimalist, high-octane endless platformer built for the web. Experience fluid movement, dynamic level progression, and compete on a global scale.
 
